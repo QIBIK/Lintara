@@ -1,5 +1,15 @@
-# Используем стабильный и легкий образ Python на базе Debian Bookworm
 FROM python:3.12-slim-bookworm
+
+# Устанавливаем системные зависимости, включая Node.js для JS линтера
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && npm install -g eslint@8.57.0 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 
 # Устанавливаем рабочую директорию
 WORKDIR /app

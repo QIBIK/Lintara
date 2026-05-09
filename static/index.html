@@ -12,19 +12,36 @@
 <body>
     <div class="container">
         <header>
-            <h1>Python Code Auditor</h1>
-            <p>Загрузите ваш .py файл для мгновенного анализа качества кода</p>
+            <h1>Code Auditor</h1>
+            <p>Загрузите ваши .py или .js файлы для мгновенного анализа качества кода</p>
         </header>
 
         <main>
             <section class="upload-section">
-                <form id="uploadForm">
-                    <div class="file-input-wrapper">
-                        <input type="file" id="fileInput" accept=".py" multiple required>
-                        <label for="fileInput">Выберите Python-файлы</label>
-                    </div>
-                    <button type="submit" id="submitBtn">Анализировать</button>
-                </form>
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="file">Файлы</button>
+                    <button class="tab-btn" data-tab="git">GitHub / GitLab</button>
+                </div>
+
+                <div id="fileTab" class="tab-content">
+                    <form id="uploadForm">
+                        <div class="file-input-wrapper">
+                            <input type="file" id="fileInput" accept=".py,.js" multiple required>
+                            <label for="fileInput">Выберите файлы проекта</label>
+                        </div>
+                        <button type="submit" id="submitBtn">Анализировать файлы</button>
+                    </form>
+                </div>
+
+                <div id="gitTab" class="tab-content hidden">
+                    <form id="gitForm">
+                        <div class="file-input-wrapper">
+                            <input type="url" id="gitUrl" placeholder="https://github.com/user/repo" required>
+                        </div>
+                        <button type="submit" id="gitSubmitBtn">Клонировать и проверить</button>
+                    </form>
+                </div>
+
                 <div id="statusMessage" class="status-box hidden">
                     <span class="spinner"></span>
                     <span class="text">Обработка кода...</span>
@@ -57,7 +74,7 @@
         </main>
 
         <footer>
-            <p>&copy; 2026 Antigravity Code Auditor. Built for high-performance Python teams.</p>
+            <p>&copy; 2026 Code Auditor Pro. Built for high-performance development teams.</p>
         </footer>
     </div>
     <script src="/static/script.js"></script>

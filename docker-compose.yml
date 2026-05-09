@@ -3,7 +3,7 @@ version: '3.8'
 services:
   auditor:
     build: .
-    container_name: python-code-auditor
+    container_name: code-auditor-pro
     ports:
       - "8000:8000"
     volumes:

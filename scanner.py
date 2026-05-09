@@ -106,3 +106,95 @@ def run_ruff_scan(file_path: str, original_filename: str = None) -> dict:
         return {"status": "error", "message": f"Ruff executable not found. Tried: {executable}"}
     except Exception as e:
         return {"status": "error", "message": f"Unexpected error: {str(e)}"}
+
+def run_eslint_scan(file_path: str, original_filename: str = None) -> dict:
+    try:
+        import shutil
+        executable = shutil.which("eslint")
+        
+        if not executable:
+            # Попробуем найти в стандартных путях npm
+            if os.name == "nt":
+                executable = shutil.which("eslint.cmd")
+            
+        if not executable:
+            return {"status": "error", "message": "ESLint not found. Make sure it is installed (npm install -g eslint)"}
+
+        # Запуск eslint через subprocess с выводом в JSON
+        # Используем встроенный форматтер json
+        result = subprocess.run(
+            [executable, file_path, "--format", "json"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        raw_output = result.stdout
+        raw_error = result.stderr
+
+        # Если в stdout пусто, но в stderr есть что-то - это системная ошибка запуска
+        if not raw_output.strip() and raw_error:
+            return {"status": "error", "message": raw_error}
+
+        try:
+            # ESLint может вывести предупреждения перед JSON, если запущен не в чистом окружении
+            # Пытаемся найти начало JSON массива
+            json_start = raw_output.find('[')
+            if json_start != -1:
+                data = json.loads(raw_output[json_start:])
+            else:
+                data = json.loads(raw_output)
+            
+            issues_data = data[0].get("messages", []) if data else []
+        except (json.JSONDecodeError, IndexError) as e:
+            # Если не удалось распарсить JSON, возвращаем ошибку
+            return {"status": "error", "message": f"Failed to parse ESLint output: {str(e)}"}
+
+        normalized_issues = []
+        display_filename = original_filename if original_filename else os.path.basename(file_path)
+
+        def get_severity(sev_level, fatal=False):
+            if fatal: return "critical"
+            if sev_level == 2: return "critical"
+            if sev_level == 1: return "warning"
+            return "info"
+
+        file_lines = []
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                file_lines = f.readlines()
+        except Exception:
+            pass
+
+        for issue in issues_data:
+            line = issue.get("line", 0)
+            line_text = ""
+            if 1 <= line <= len(file_lines):
+                line_text = file_lines[line-1].strip()
+
+            rule_id = issue.get("ruleId")
+            if not rule_id:
+                rule_id = "SyntaxError" if issue.get("fatal") else "LintError"
+
+            normalized_issues.append({
+                "file": display_filename,
+                "line": line,
+                "column": issue.get("column", 0),
+                "rule": rule_id,
+                "severity": get_severity(issue.get("severity", 0), issue.get("fatal")),
+                "message": issue.get("message", "Unknown issue"),
+                "line_text": line_text
+            })
+
+        return {
+            "scan_id": str(int(time.time())),
+            "issues": normalized_issues,
+            "status": "success"
+        }
+
+
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "message": "ESLint scan timed out"}
+    except Exception as e:
+        return {"status": "error", "message": f"Unexpected ESLint error: {str(e)}"}
+

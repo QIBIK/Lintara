@@ -6,6 +6,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const resultsBody = document.getElementById('resultsBody');
     const emptyMessage = document.getElementById('emptyMessage');
     const statsSummary = document.getElementById('statsSummary');
+    
+    // Новые элементы для Git
+    const gitForm = document.getElementById('gitForm');
+    const gitUrl = document.getElementById('gitUrl');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    // Переключение вкладок
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.add('hidden'));
+            
+            btn.classList.add('active');
+            document.getElementById(`${btn.dataset.tab}Tab`).classList.remove('hidden');
+        });
+    });
 
     // Drag & Drop
     const dropZone = document.querySelector('.upload-section');
@@ -69,6 +86,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Обработка Git формы
+    gitForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const url = gitUrl.value.trim();
+        if (!url) return;
+
+        setLoading(true);
+        clearResults();
+
+        try {
+            const response = await fetch('/api/scan/git', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.detail || 'Ошибка при сканировании репозитория');
+            }
+
+            renderResults(result);
+        } catch (error) {
+            showError(error.message);
+        } finally {
+            setLoading(false);
+        }
+    });
+
     function setLoading(isLoading) {
         submitBtn.disabled = isLoading;
         statusMessage.classList.toggle('hidden', !isLoading);
@@ -83,8 +130,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderResults(data) {
         const issues = data.issues || [];
+        const scanErrors = data.scan_errors || [];
         
-        if (issues.length === 0) {
+        if (issues.length === 0 && scanErrors.length === 0) {
             emptyMessage.textContent = 'Ошибок не найдено! Отличный код.';
             return;
         }
@@ -108,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             row.innerHTML = `
                 <td>${issue.file}</td>
-                <td>${issue.line}:${issue.column}</td>
+                <td>${issue.line > 0 ? issue.line : '-'}:${issue.column > 0 ? issue.column : '-'}</td>
                 <td><code>${issue.rule}</code></td>
                 <td><span class="severity-${issue.severity}">${severityLabels[issue.severity] || issue.severity.toUpperCase()}</span></td>
                 <td>
@@ -124,6 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statsSummary.innerHTML = `Проверено файлов: <strong>${filesCount}</strong>. Найдено: <strong>${criticalCount}</strong> критических, <strong>${warningCount}</strong> предупреждений.`;
         statsSummary.classList.remove('hidden');
     }
+
 
     function showError(message) {
         emptyMessage.classList.remove('hidden');
