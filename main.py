@@ -36,14 +36,15 @@ async def scan_files(files: List[UploadFile] = File(...)):
     all_issues = []
     files_processed = 0
     errors = []
+    files_code = {} # Кэш кода для фронтенда
     
     for file in files:
-        filename = file.filename.lower()
+        filename = file.filename
         scanner_func = None
         
-        if filename.endswith(".py"):
+        if filename.lower().endswith(".py"):
             scanner_func = run_ruff_scan
-        elif filename.endswith(".js"):
+        elif filename.lower().endswith(".js"):
             scanner_func = run_eslint_scan
             
         if not scanner_func:
@@ -54,28 +55,34 @@ async def scan_files(files: List[UploadFile] = File(...)):
         MAX_SIZE = 10 * 1024 * 1024
         content = await file.read()
         if len(content) > MAX_SIZE:
-            errors.append(f"Файл {file.filename} слишком большой")
+            errors.append(f"Файл {filename} слишком большой")
             continue
         
         await file.seek(0)
+        
+        # Сохраняем код для отображения
+        try:
+            files_code[filename] = content.decode("utf-8")
+        except:
+            files_code[filename] = "[Не удалось прочитать содержимое файла]"
 
-        timestamp = f"{int(time.time())}_{file.filename}"
+        timestamp = f"{int(time.time())}_{filename}"
         temp_file_path = os.path.join(UPLOAD_DIR, timestamp)
         
         try:
             with open(temp_file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
             
-            result = scanner_func(temp_file_path, original_filename=file.filename)
+            result = scanner_func(temp_file_path, original_filename=filename)
             
             if result["status"] == "success":
                 all_issues.extend(result["issues"])
             else:
                 # Если сканер вернул ошибку (например, синтаксическую)
-                errors.append(f"Ошибка в {file.filename}: {result.get('message', 'Неизвестная ошибка')}")
+                errors.append(f"Ошибка в {filename}: {result.get('message', 'Неизвестная ошибка')}")
                 # Добавляем системную ошибку в список проблем, чтобы пользователь ее видел
                 all_issues.append({
-                    "file": file.filename,
+                    "file": filename,
                     "line": 0,
                     "column": 0,
                     "rule": "SCAN_ERROR",
@@ -92,9 +99,9 @@ async def scan_files(files: List[UploadFile] = File(...)):
         "status": "success",
         "issues": all_issues,
         "files_scanned": files_processed,
-        "scan_errors": errors
+        "scan_errors": errors,
+        "files_code": files_code
     }
-
 
 
 from pydantic import BaseModel
@@ -111,6 +118,7 @@ async def scan_git_repo(request: GitScanRequest):
     all_issues = []
     files_processed = 0
     errors = []
+    files_code = {}
 
     # Создаем временную директорию для клонирования
     with tempfile.TemporaryDirectory(dir=UPLOAD_DIR) as tmp_dir:
@@ -121,7 +129,8 @@ async def scan_git_repo(request: GitScanRequest):
                 ["git", "clone", "--depth", "1", repo_url, tmp_dir],
                 capture_output=True,
                 text=True,
-                timeout=60
+                timeout=60,
+                env={"GIT_TERMINAL_PROMPT": "0", "PATH": os.environ.get("PATH", "")}
             )
 
             if process.returncode != 0:
@@ -147,6 +156,12 @@ async def scan_git_repo(request: GitScanRequest):
                         # Относительный путь для красоты в отчете
                         rel_path = str(file_path.relative_to(tmp_dir))
                         
+                        # Сохраняем код
+                        try:
+                            files_code[rel_path] = file_path.read_text(encoding="utf-8")
+                        except:
+                            files_code[rel_path] = "[Ошибка чтения]"
+                        
                         result = scanner_func(str(file_path), original_filename=rel_path)
                         
                         if result["status"] == "success":
@@ -163,5 +178,6 @@ async def scan_git_repo(request: GitScanRequest):
         "status": "success",
         "issues": all_issues,
         "files_scanned": files_processed,
-        "scan_errors": errors
+        "scan_errors": errors,
+        "files_code": files_code
     }

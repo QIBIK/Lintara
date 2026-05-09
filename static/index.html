@@ -8,6 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <!-- Monaco Editor -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -48,9 +50,33 @@
                 </div>
             </section>
 
-            <section id="resultsSection" class="results-section">
-                <h2>Результаты</h2>
-                <div id="statsSummary" class="stats-summary hidden"></div>
+            <section id="resultsSection" class="results-section hidden">
+                <h2>Результаты аудита</h2>
+                
+                <!-- Dashboard -->
+                <div id="statsDashboard" class="stats-grid">
+                    <div class="stat-card files">
+                        <span class="label">Файлов проверено</span>
+                        <span id="statFiles" class="value">0</span>
+                    </div>
+                    <div class="stat-card critical">
+                        <span class="label">Критических ошибок</span>
+                        <span id="statCritical" class="value">0</span>
+                    </div>
+                    <div class="stat-card warning">
+                        <span class="label">Предупреждений</span>
+                        <span id="statWarning" class="value">0</span>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-bar">
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">Фильтр:</span>
+                    <button class="filter-btn active" data-severity="all">Все</button>
+                    <button class="filter-btn" data-severity="critical">Только критические</button>
+                    <button class="filter-btn" data-severity="warning">Предупреждения</button>
+                </div>
+
                 <div class="table-container">
                     <table id="resultsTable">
                         <thead>
@@ -76,6 +102,17 @@
         <footer>
             <p>&copy; 2026 Code Auditor Pro. Built for high-performance development teams.</p>
         </footer>
+
+        <!-- Modal for Code Viewer -->
+        <div id="codeModal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Просмотр кода</h3>
+                    <button id="closeModal">&times;</button>
+                </div>
+                <div id="monaco-container"></div>
+            </div>
+        </div>
     </div>
     <script src="/static/script.js"></script>
 </body>
