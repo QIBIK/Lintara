@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Code Auditor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Python Code Auditor</h1>
+            <p>Загрузите ваш .py файл для мгновенного анализа качества кода</p>
+        </header>
+
+        <main>
+            <section class="upload-section">
+                <form id="uploadForm">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="fileInput" accept=".py" multiple required>
+                        <label for="fileInput">Выберите Python-файлы</label>
+                    </div>
+                    <button type="submit" id="submitBtn">Анализировать</button>
+                </form>
+                <div id="statusMessage" class="status-box hidden">
+                    <span class="spinner"></span>
+                    <span class="text">Обработка кода...</span>
+                </div>
+            </section>
+
+            <section id="resultsSection" class="results-section">
+                <h2>Результаты</h2>
+                <div id="statsSummary" class="stats-summary hidden"></div>
+                <div class="table-container">
+                    <table id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Файл</th>
+                                <th>Строка</th>
+                                <th>Правило</th>
+                                <th>Уровень</th>
+                                <th>Сообщение</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody">
+                            <!-- Результаты будут добавлены через JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="emptyMessage" class="empty-state">
+                    Пока нет данных для отображения. Загрузите файл.
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 Antigravity Code Auditor. Built for high-performance Python teams.</p>
+        </footer>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>
