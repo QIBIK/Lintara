@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 import os
 import time
 import shutil
-from scanner import run_ruff_scan, run_eslint_scan
+from scanner import run_ruff_scan, run_eslint_scan, run_yaml_scan
 
 app = FastAPI(title="Multi-Language Code Auditor")
 
@@ -46,6 +46,8 @@ async def scan_files(files: List[UploadFile] = File(...)):
             scanner_func = run_ruff_scan
         elif filename.lower().endswith(".js"):
             scanner_func = run_eslint_scan
+        elif filename.lower().endswith((".yaml", ".yml")):
+            scanner_func = run_yaml_scan
             
         if not scanner_func:
             continue 
@@ -150,6 +152,8 @@ async def scan_git_repo(request: GitScanRequest):
                         scanner_func = run_ruff_scan
                     elif ext == ".js":
                         scanner_func = run_eslint_scan
+                    elif ext in [".yaml", ".yml"]:
+                        scanner_func = run_yaml_scan
                     
                     if scanner_func:
                         files_processed += 1

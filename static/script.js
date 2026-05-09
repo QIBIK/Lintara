@@ -242,7 +242,9 @@ document.addEventListener('DOMContentLoaded', () => {
         modalTitle.textContent = `Файл: ${filename}`;
         codeModal.classList.remove('hidden');
 
-        const language = filename.endsWith('.py') ? 'python' : 'javascript';
+        let language = 'javascript';
+        if (filename.endsWith('.py')) language = 'python';
+        else if (filename.endsWith('.yaml') || filename.endsWith('.yml')) language = 'yaml';
 
         if (!editor) {
             editor = monaco.editor.create(document.getElementById('monaco-container'), {

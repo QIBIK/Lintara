@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     git \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
+    && apt-get install -y git nodejs yamllint \
     && npm install -g eslint@8.57.0 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

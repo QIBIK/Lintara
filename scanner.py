@@ -105,7 +105,63 @@ def run_ruff_scan(file_path: str, original_filename: str = None) -> dict:
     except FileNotFoundError:
         return {"status": "error", "message": f"Ruff executable not found. Tried: {executable}"}
     except Exception as e:
-        return {"status": "error", "message": f"Unexpected error: {str(e)}"}
+        return {"status": "error", "message": f"Ошибка запуска ESLint: {str(e)}"}
+
+def run_yaml_scan(file_path: str, original_filename: str = None):
+    """Запуск yamllint для проверки YAML файлов"""
+    try:
+        # -f parsable выдает удобный формат для парсинга
+        process = subprocess.run(
+            ["yamllint", "-f", "parsable", file_path],
+            capture_output=True,
+            text=True
+        )
+        
+        issues = []
+        filename = original_filename or file_path
+        
+        # yamllint выводит ошибки даже если returncode != 0
+        output = process.stdout.strip()
+        if not output:
+            return {"status": "success", "issues": []}
+
+        for line in output.splitlines():
+            # Формат: file:line:col: [level] message (rule)
+            parts = line.split(":", 3)
+            if len(parts) < 4: continue
+            
+            # parts[1] - line, parts[2] - col, parts[3] - [level] message (rule)
+            line_num = int(parts[1])
+            col_num = int(parts[2])
+            msg_part = parts[3].strip()
+            
+            severity = "warning"
+            if "[error]" in msg_part: severity = "critical"
+            
+            # Очищаем сообщение от [error] или [warning]
+            clean_msg = msg_part.replace("[error]", "").replace("[warning]", "").strip()
+            
+            # Извлекаем правило (оно в конце в скобках)
+            rule = "yaml-style"
+            if "(" in clean_msg and clean_msg.endswith(")"):
+                rule_start = clean_msg.rfind("(")
+                rule = clean_msg[rule_start+1:-1]
+                clean_msg = clean_msg[:rule_start].strip()
+
+            issues.append({
+                "file": filename,
+                "line": line_num,
+                "column": col_num,
+                "rule": rule,
+                "severity": severity,
+                "message": clean_msg,
+                "line_text": "" # yamllint не дает текст строки в этом формате
+            })
+
+        return {"status": "success", "issues": issues}
+    except Exception as e:
+        return {"status": "error", "message": f"Ошибка запуска yamllint: {str(e)}"}
+
 
 def run_eslint_scan(file_path: str, original_filename: str = None) -> dict:
     try:
