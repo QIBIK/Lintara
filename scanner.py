@@ -64,19 +64,34 @@ def run_ruff_scan(file_path: str, original_filename: str = None) -> dict:
             if prefix == "W": return "warning"
             return "info"
 
+        # Читаем содержимое файла для извлечения строк с ошибками
+        file_lines = []
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                file_lines = f.readlines()
+        except Exception:
+            pass # Если не удалось прочитать, просто не будет текста строки
+
         # Используем оригинальное имя файла, если оно передано, иначе имя временного файла
         display_filename = original_filename if original_filename else os.path.basename(file_path)
 
         for issue in issues_data[:500]:
             code = issue.get("code", "")
+            row = issue.get("location", {}).get("row", 0)
             
+            # Извлекаем текст строки (row - 1, так как в ruff нумерация с 1)
+            line_text = ""
+            if 1 <= row <= len(file_lines):
+                line_text = file_lines[row-1].strip()
+
             normalized_issues.append({
                 "file": display_filename,
-                "line": issue.get("location", {}).get("row", 0),
+                "line": row,
                 "column": issue.get("location", {}).get("column", 0),
                 "rule": code,
                 "severity": get_severity(code),
-                "message": issue.get("message", "")
+                "message": issue.get("message", ""),
+                "line_text": line_text
             })
 
         return {

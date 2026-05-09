@@ -111,7 +111,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${issue.line}:${issue.column}</td>
                 <td><code>${issue.rule}</code></td>
                 <td><span class="severity-${issue.severity}">${severityLabels[issue.severity] || issue.severity.toUpperCase()}</span></td>
-                <td>${issue.message}</td>
+                <td>
+                    <div class="message-text">${issue.message}</div>
+                    ${issue.line_text ? `<div class="code-snippet"><code>${escapeHtml(issue.line_text)}</code></div>` : ''}
+                </td>
             `;
             resultsBody.appendChild(row);
         });
@@ -125,5 +128,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function showError(message) {
         emptyMessage.classList.remove('hidden');
         emptyMessage.innerHTML = `<span style="color: var(--critical)">Ошибка: ${message}</span>`;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 });

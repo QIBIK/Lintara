@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.git
+.gitignore
+.venv
+venv/
+env/
+.ruff_cache/
+uploads/
+*.log
+.vscode/
+.idea/
+Dockerfile
+docker-compose.yml
+.dockerignore
