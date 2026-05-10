@@ -22,6 +22,7 @@
                 <span class="lang-tag cpp">C++</span>
                 <span class="lang-tag go">Go</span>
                 <span class="lang-tag html">Web</span>
+                <span class="lang-tag java">Java</span>
             </nav>
         </header>
 
@@ -103,18 +104,13 @@
                     </div>
                 </div>
 
-                <div class="analysis-layout">
-                    <aside class="complexity-sidebar hidden" id="complexityPanel">
-                        <h3>Сложность функций</h3>
-                        <div id="complexityList" class="compact-complexity"></div>
-                    </aside>
-
-                    <div class="issues-main">
+                    <div class="issues-main full-width">
                         <div class="filter-pills">
                             <button class="pill active" data-severity="all">Все</button>
                             <button class="pill" data-severity="critical">Критические</button>
                             <button class="pill" data-severity="warning">Стиль</button>
                             <button class="pill" data-severity="security">Безопасность</button>
+                            <button class="pill" data-severity="complexity">Сложность</button>
                         </div>
                         <div id="issuesList" class="issues-stack"></div>
                     </div>

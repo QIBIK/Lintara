@@ -1,6 +1,7 @@
 let editor = null;
 let currentFilesCode = {};
 let allIssues = [];
+let allComplexity = [];
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Tabs ---
@@ -24,10 +25,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropZone = document.getElementById('dropZone');
 
     dropZone.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', () => {
+    
+    ['dragover', 'dragenter'].forEach(evt => {
+        dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            dropZone.classList.add('highlight');
+        });
+    });
+
+    ['dragleave', 'dragend', 'drop'].forEach(evt => {
+        dropZone.addEventListener(evt, () => {
+            dropZone.classList.remove('highlight');
+        });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileInput.files = e.dataTransfer.files;
+        updateFileStatus();
+    });
+
+    fileInput.addEventListener('change', updateFileStatus);
+
+    function updateFileStatus() {
         const p = dropZone.querySelector('p');
         p.innerHTML = `Выбрано: <b>${fileInput.files.length}</b>`;
-    });
+    }
 
     gitForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -65,11 +88,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderDashboard(data) {
         document.getElementById('resultsSection').classList.remove('hidden');
-        const issues = data.issues || [];
-        const complexity = data.complexity || [];
+        allIssues = data.issues || [];
+        allComplexity = data.complexity || [];
 
         let crit = 0, warn = 0, sec = 0;
-        issues.forEach(i => {
+        allIssues.forEach(i => {
             if (i.severity === 'critical') crit++;
             if (i.severity === 'warning') warn++;
             if (i.category === 'security') sec++;
@@ -79,19 +102,16 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('statWarning').textContent = warn;
         document.getElementById('statSecurity').textContent = sec;
 
-        let score = 100 - (crit * 15) - (warn * 3) - (complexity.length * 7);
+        let score = 100 - (crit * 15) - (warn * 3) - (allComplexity.length * 7);
         score = Math.max(0, score);
         updateHealthScore(score);
 
-        renderIssues(issues);
+        // По умолчанию показываем все проблемы
+        renderIssues(allIssues);
         
-        const panel = document.getElementById('complexityPanel');
-        if (complexity.length > 0) {
-            panel.classList.remove('hidden');
-            renderComplexity(complexity);
-        } else {
-            panel.classList.add('hidden');
-        }
+        // Сбрасываем активную пилюлю на "Все"
+        document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+        document.querySelector('.pill[data-severity="all"]').classList.add('active');
     }
 
     function updateHealthScore(score) {
@@ -157,15 +177,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function renderComplexity(items) {
-        const container = document.getElementById('complexityList');
-        container.innerHTML = '';
-        items.sort((a, b) => b.complexity - a.complexity).forEach(item => {
+    function renderComplexityTab() {
+        const container = document.getElementById('issuesList');
+        container.innerHTML = `
+            <div class="complexity-info">
+                <h4>Сложность функций (Cyclomatic Complexity)</h4>
+                <div class="complexity-legend">
+                    <div class="legend-item"><span class="rank-badge rank-a">A</span> Низкая (1-5)</div>
+                    <div class="legend-item"><span class="rank-badge rank-b">B</span> Средняя (6-10)</div>
+                    <div class="legend-item"><span class="rank-badge rank-c">C</span> Высокая (11-20)</div>
+                    <div class="legend-item"><span class="rank-badge rank-d">D</span> Очень высокая (21-30)</div>
+                    <div class="legend-item"><span class="rank-badge rank-e">E</span> Экстремальная (31-40)</div>
+                    <div class="legend-item"><span class="rank-badge rank-f">F</span> Опасная (41+)</div>
+                </div>
+            </div>
+            <div id="complexityItems" class="compact-complexity"></div>
+        `;
+
+        const itemsContainer = document.getElementById('complexityItems');
+        if (allComplexity.length === 0) {
+            itemsContainer.innerHTML = '<p style="color: var(--text-secondary)">Данные о сложности отсутствуют для выбранных файлов.</p>';
+            return;
+        }
+
+        allComplexity.sort((a, b) => b.complexity - a.complexity).forEach(item => {
             const div = document.createElement('div');
             div.className = 'complexity-item';
-            div.innerHTML = `<span>${item.name}</span><span class="lang-tag">${item.rank}</span>`;
+            div.innerHTML = `<span>${item.name}</span><span class="rank-badge rank-${item.rank.toLowerCase()}">${item.rank}</span>`;
             div.addEventListener('click', () => openCodeViewer(item.file, item.line, false));
-            container.appendChild(div);
+            itemsContainer.appendChild(div);
         });
     }
 
@@ -179,7 +219,11 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('modalTitle').textContent = filename;
         const code = currentFilesCode[filename] || "// Код недоступен";
         const ext = filename.split('.').pop().toLowerCase();
-        const langMap = { 'py': 'python', 'js': 'javascript', 'go': 'go', 'cpp': 'cpp', 'c': 'cpp', 'css': 'css', 'html': 'html' };
+        const langMap = { 
+            'py': 'python', 'js': 'javascript', 'go': 'go', 
+            'cpp': 'cpp', 'c': 'cpp', 'css': 'css', 
+            'html': 'html', 'java': 'java', 'yaml': 'yaml', 'yml': 'yaml' 
+        };
         const lang = langMap[ext] || 'plaintext';
 
         if (!editor) {
@@ -216,11 +260,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!e.target.classList.contains('pill')) return;
         document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
         e.target.classList.add('active');
+        
         const sev = e.target.dataset.severity;
-        document.querySelectorAll('.issue-card').forEach(card => {
-            if (sev === 'all') card.classList.remove('hidden');
-            else if (sev === 'security') card.classList.toggle('hidden', card.dataset.category !== 'security');
-            else card.classList.toggle('hidden', card.dataset.severity !== sev);
-        });
+        if (sev === 'complexity') {
+            renderComplexityTab();
+        } else {
+            renderIssues(allIssues);
+            if (sev !== 'all') {
+                document.querySelectorAll('.issue-card').forEach(card => {
+                    if (sev === 'security') {
+                        card.classList.toggle('hidden', card.dataset.category !== 'security');
+                    } else if (sev === 'warning') {
+                        // Показываем предупреждения, которые НЕ являются безопасностью
+                        card.classList.toggle('hidden', card.dataset.severity !== 'warning' || card.dataset.category === 'security');
+                    } else if (sev === 'critical') {
+                        // Показываем критические ошибки, которые НЕ являются безопасностью
+                        card.classList.toggle('hidden', card.dataset.severity !== 'critical' || card.dataset.category === 'security');
+                    }
+                });
+            }
+        }
     });
 });

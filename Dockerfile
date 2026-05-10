@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     git \
     cppcheck \
     yamllint \
+    default-jdk-headless \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && npm install -g eslint@8.57.0 htmlhint stylelint stylelint-config-standard \

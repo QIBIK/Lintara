@@ -9,7 +9,7 @@ from scanner import (
     run_bandit_scan, run_radon_complexity,
     run_hadolint_scan, run_cppcheck_scan,
     run_staticcheck_scan, run_htmlhint_scan,
-    run_stylelint_scan
+    run_stylelint_scan, run_java_scan, run_universal_security_scan
 )
 
 app = FastAPI(title="Multi-Language Code Auditor")
@@ -35,7 +35,8 @@ SUPPORTED_EXTENSIONS = {
     ".c", ".cpp", ".cc", ".h", ".hpp", # C/C++
     ".go",                             # Go
     ".html", ".htm",                   # HTML
-    ".css"                             # CSS
+    ".css",                            # CSS
+    ".java"                            # Java
 }
 
 def get_scanners_for_file(filename: str):
@@ -59,6 +60,8 @@ def get_scanners_for_file(filename: str):
         scanners.append(("style", run_htmlhint_scan))
     elif ext == ".css":
         scanners.append(("style", run_stylelint_scan))
+    elif ext == ".java":
+        scanners.append(("style", run_java_scan))
     elif basename == "dockerfile" or basename.startswith("dockerfile."):
         scanners.append(("docker", run_hadolint_scan))
 
@@ -97,6 +100,10 @@ async def scan_files(files: list[UploadFile] = File(...)):
                 if result["status"] == "success": all_issues.extend(result.get("issues", []))
                 else: errors.append(f"Error in {filename}: {result.get('message')}")
             
+            # Universal security check for secrets in all files
+            sec_res = run_universal_security_scan(temp_path, original_filename=filename)
+            if sec_res["status"] == "success": all_issues.extend(sec_res.get("issues", []))
+            
             if filename.lower().endswith(".py"):
                 cx = run_radon_complexity(temp_path, original_filename=filename)
                 if cx["status"] == "success": all_complexity.extend(cx.get("complexity", []))
@@ -132,6 +139,10 @@ async def scan_git_repo(request: dict):
                     for category, scanner_func in scanners:
                         result = scanner_func(str(f_path), original_filename=rel_path)
                         if result["status"] == "success": all_issues.extend(result.get("issues", []))
+                    
+                    # Universal security check
+                    sec_res = run_universal_security_scan(str(f_path), original_filename=rel_path)
+                    if sec_res["status"] == "success": all_issues.extend(sec_res.get("issues", []))
                     
                     if rel_path.lower().endswith(".py"):
                         cx = run_radon_complexity(str(f_path), original_filename=rel_path)

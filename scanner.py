@@ -31,10 +31,19 @@ def run_ruff_scan(file_path: str, original_filename: str = None) -> dict:
 
         normalized_issues = []
         def get_severity(code):
-            critical_codes = ["F821", "E999", "F404"] 
+            # E999 is syntax error, F821 is undefined name - these are CRITICAL
+            critical_codes = ["E999", "F821", "F404", "F823", "F822"] 
             if code in critical_codes: return "critical"
-            prefix = code[0] if code else ""
-            if prefix == "E": return "critical"
+            
+            # F401 (Unused import), F541 (F-string without placeholders) are warnings
+            if code in ["F401", "F541"]: return "warning"
+            
+            # E-prefix (mostly PEP8) should be warnings by default
+            if code.startswith("E"): return "warning"
+            
+            # F-prefix (logical errors) should be critical
+            if code.startswith("F"): return "critical"
+            
             return "warning"
 
         file_lines = []
@@ -210,9 +219,33 @@ def run_staticcheck_scan(file_path: str, original_filename: str = None) -> dict:
 
 
 def run_htmlhint_scan(file_path: str, original_filename: str = None) -> dict:
-    """Запуск htmlhint для HTML файлов."""
+    """Запуск htmlhint для HTML файлов с предварительной очисткой шаблонов."""
     try:
-        result = subprocess.run(["htmlhint", "--format", "json", file_path], capture_output=True, text=True, timeout=30)
+        temp_lint_path = file_path + ".lint.html"
+        is_template = False
+        
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+                if "{%" in content or "{{" in content:
+                    is_template = True
+                    # Заменяем блоки шаблона на пробелы, сохраняя длину, чтобы не сбить колонки
+                    cleaned = re.sub(r'\{%.*?%\}', lambda m: " " * len(m.group(0)), content, flags=re.DOTALL)
+                    cleaned = re.sub(r'\{\{.*?\}\}', lambda m: " " * len(m.group(0)), cleaned, flags=re.DOTALL)
+                    with open(temp_lint_path, "w", encoding="utf-8") as tf:
+                        tf.write(cleaned)
+                else:
+                    import shutil
+                    shutil.copy2(file_path, temp_lint_path)
+        except:
+            temp_lint_path = file_path
+
+        result = subprocess.run(["htmlhint", "--format", "json", temp_lint_path], capture_output=True, text=True, timeout=30)
+        
+        # Удаляем временный файл для линтинга
+        if temp_lint_path != file_path and os.path.exists(temp_lint_path):
+            os.remove(temp_lint_path)
+
         output = result.stdout.strip()
         if not output or output == "[]": return {"status": "success", "issues": []}
         
@@ -221,11 +254,18 @@ def run_htmlhint_scan(file_path: str, original_filename: str = None) -> dict:
         display_filename = original_filename or os.path.basename(file_path)
         
         for item in data[0].get("messages", []):
+            rule_id = item.get("rule", {}).get("id", "")
             level = item.get("type", "warning")
+            
+            # Если это шаблон, игнорируем отсутствие doctype
+            if is_template and rule_id == "doctype-first":
+                continue
+                
             severity = "critical" if level == "error" else "warning"
+            
             normalized.append({
                 "file": display_filename, "line": item.get("line", 0), "column": item.get("col", 0),
-                "rule": item.get("rule", {}).get("id", "htmlhint"), "severity": severity,
+                "rule": rule_id or "htmlhint", "severity": severity,
                 "message": f"[HTML] {item.get('message', '')}", "line_text": "", "category": "style"
             })
         return {"status": "success", "issues": normalized}
@@ -270,6 +310,11 @@ def run_yaml_scan(file_path: str, original_filename: str = None):
             parts = line.split(":", 3)
             if len(parts) < 4: continue
             severity = "critical" if "[error]" in parts[3] else "warning"
+            # Special case: style issues should be warning
+            if "(line-length)" in parts[3]: severity = "warning"
+            if "(new-lines)" in parts[3]: severity = "warning"
+            if "(document-start)" in parts[3]: severity = "warning"
+            
             normalized_msg = parts[3].replace("[error]", "").replace("[warning]", "").strip()
             issues.append({
                 "file": original_filename or file_path, "line": int(parts[1]), "column": int(parts[2]),
@@ -300,3 +345,88 @@ def run_eslint_scan(file_path: str, original_filename: str = None) -> dict:
         return {"status": "success", "issues": normalized_issues}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+def run_java_scan(file_path: str, original_filename: str = None) -> dict:
+    """Basic Java scanner using javac for syntax and regex for common issues."""
+    try:
+        display_filename = original_filename or os.path.basename(file_path)
+        issues = []
+        
+        # 1. Syntax check with javac
+        # Note: javac needs .java extension to work properly in some cases
+        syntax_res = subprocess.run(["javac", "-Xlint", file_path], capture_output=True, text=True, timeout=30)
+        if syntax_res.returncode != 0:
+            # Parse javac output: file:line: error: message
+            for line in syntax_res.stderr.splitlines():
+                match = re.search(r':(\d+):\s+(error|warning):\s+(.*)', line)
+                if match:
+                    line_num = int(match.group(1))
+                    sev = "critical" if match.group(2) == "error" else "warning"
+                    msg = match.group(3)
+                    issues.append({
+                        "file": display_filename, "line": line_num, "column": 0,
+                        "rule": "JAVA-SYNTAX", "severity": sev,
+                        "message": f"[JAVA] {msg}", "line_text": "", "category": "style"
+                    })
+
+        # 2. Custom Regex Checks
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                for i, text in enumerate(lines):
+                    line_no = i + 1
+                    # Line length
+                    if len(text) > 100:
+                        issues.append({
+                            "file": display_filename, "line": line_no, "column": 0,
+                            "rule": "JAVA-E501", "severity": "warning",
+                            "message": "[JAVA] Line too long (>100 chars)", "line_text": text.strip(), "category": "style"
+                        })
+                    # Hardcoded password
+                    if re.search(r'(password|passwd|secret|pwd)\s*=\s*["\'].*["\']', text, re.I):
+                        issues.append({
+                            "file": display_filename, "line": line_no, "column": 0,
+                            "rule": "JAVA-SEC", "severity": "critical",
+                            "message": "[JAVA] Possible hardcoded password", "line_text": text.strip(), "category": "security"
+                        })
+                    # System.out.println
+                    if "System.out.println" in text:
+                        issues.append({
+                            "file": display_filename, "line": line_no, "column": 0,
+                            "rule": "JAVA-STYLE", "severity": "warning",
+                            "message": "[JAVA] Use a logger instead of System.out.println", "line_text": text.strip(), "category": "style"
+                        })
+        except: pass
+
+        return {"status": "success", "issues": issues}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+def run_universal_security_scan(file_path: str, original_filename: str = None) -> dict:
+    """Universal scanner to find secrets, API keys and sensitive data in any file."""
+    try:
+        display_filename = original_filename or os.path.basename(file_path)
+        issues = []
+        
+        # Patterns for secrets
+        patterns = [
+            (r'(?i)api_key\s*[:=]\s*["\'][a-z0-9-]{20,}["\']', "Potential API Key"),
+            (r'(?i)secret\s*[:=]\s*["\'][a-z0-9-]{20,}["\']', "Potential Secret"),
+            (r'(?i)bearer\s+[a-z0-9._-]{20,}', "Potential Bearer Token"),
+            (r'-----BEGIN (RSA|EC|PGP|OPENSSH) PRIVATE KEY-----', "Private Key exposed"),
+            (r'postgres://[a-zA-Z0-9:]+:[a-zA-Z0-9:]+@', "Database Connection String with password")
+        ]
+
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            for i, line in enumerate(f):
+                for pattern, msg in patterns:
+                    if re.search(pattern, line):
+                        issues.append({
+                            "file": display_filename, "line": i + 1, "column": 0,
+                            "rule": "UNIVERSAL-SECURITY", "severity": "critical",
+                            "message": f"[SECURITY] {msg}", "line_text": line.strip(), "category": "security"
+                        })
+        
+        return {"status": "success", "issues": issues}
+    except:
+        return {"status": "success", "issues": []}
