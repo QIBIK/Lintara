@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Antigravity Code Auditor</title>
+    <meta name="description" content="Professional multi-language code auditor with security scanning, complexity analysis, and Dockerfile linting.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,7 +16,14 @@
     <div class="container">
         <header>
             <h1>Code Auditor</h1>
-            <p>Загрузите ваши .py или .js файлы для мгновенного анализа качества кода</p>
+            <p>Загрузите ваши файлы для мгновенного анализа качества и безопасности кода</p>
+            <div class="supported-langs">
+                <span class="lang-tag python">Python</span>
+                <span class="lang-tag js">JavaScript</span>
+                <span class="lang-tag yaml">YAML</span>
+                <span class="lang-tag docker">Dockerfile</span>
+                <span class="lang-tag terraform">Terraform</span>
+            </div>
         </header>
 
         <main>
@@ -28,8 +36,8 @@
                 <div id="fileTab" class="tab-content">
                     <form id="uploadForm">
                         <div class="file-input-wrapper">
-                            <input type="file" id="fileInput" accept=".py,.js" multiple required>
-                            <label for="fileInput">Выберите файлы проекта</label>
+                            <input type="file" id="fileInput" multiple required>
+                            <label for="fileInput">Выберите файлы проекта (py, js, yaml, docker...)</label>
                         </div>
                         <button type="submit" id="submitBtn">Анализировать файлы</button>
                     </form>
@@ -52,7 +60,7 @@
 
             <section id="resultsSection" class="results-section hidden">
                 <h2>Результаты аудита</h2>
-                
+
                 <!-- Dashboard -->
                 <div id="statsDashboard" class="stats-grid">
                     <div class="stat-card files">
@@ -67,20 +75,37 @@
                         <span class="label">Предупреждений</span>
                         <span id="statWarning" class="value">0</span>
                     </div>
+                    <div class="stat-card security">
+                        <span class="label">Уязвимостей</span>
+                        <span id="statSecurity" class="value">0</span>
+                    </div>
+                    <div class="stat-card complexity-card">
+                        <span class="label">Сложных функций</span>
+                        <span id="statComplexity" class="value">0</span>
+                    </div>
                 </div>
 
                 <!-- Filters -->
                 <div class="filter-bar">
                     <span style="color: var(--text-muted); font-size: 0.9rem;">Фильтр:</span>
                     <button class="filter-btn active" data-severity="all">Все</button>
-                    <button class="filter-btn" data-severity="critical">Только критические</button>
+                    <button class="filter-btn" data-severity="critical">Критические</button>
                     <button class="filter-btn" data-severity="warning">Предупреждения</button>
+                    <button class="filter-btn filter-btn-security" data-severity="security">🛡️ Безопасность</button>
+                </div>
+
+                <!-- Complexity Panel -->
+                <div id="complexityPanel" class="complexity-panel hidden">
+                    <h3>📊 Цикломатическая сложность</h3>
+                    <p class="complexity-hint">Функции с рангом C и выше — кандидаты на рефакторинг</p>
+                    <div id="complexityList" class="complexity-list"></div>
                 </div>
 
                 <div class="table-container">
                     <table id="resultsTable">
                         <thead>
                             <tr>
+                                <th>Категория</th>
                                 <th>Файл</th>
                                 <th>Строка</th>
                                 <th>Правило</th>
@@ -89,7 +114,6 @@
                             </tr>
                         </thead>
                         <tbody id="resultsBody">
-                            <!-- Результаты будут добавлены через JS -->
                         </tbody>
                     </table>
                 </div>

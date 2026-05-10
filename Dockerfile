@@ -10,17 +10,18 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Устанавливаем hadolint для проверки Dockerfile
+RUN curl -fsSL -o /usr/local/bin/hadolint \
+    https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64 \
+    && chmod +x /usr/local/bin/hadolint
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Системные зависимости (build-essential не требуется для текущих пакетов)
-# Если понадобятся библиотеки с C-расширениями, можно будет вернуть.
-
 # Копируем файл зависимостей
 COPY requirements.txt .
 
-# Устанавливаем зависимости
+# Устанавливаем зависимости Python (bandit, radon, semgrep и т.д.)
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем остальные файлы проекта

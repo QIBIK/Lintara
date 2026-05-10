@@ -4,7 +4,11 @@ from fastapi.responses import FileResponse
 import os
 import time
 import shutil
-from scanner import run_ruff_scan, run_eslint_scan, run_yaml_scan
+from scanner import (
+    run_ruff_scan, run_eslint_scan, run_yaml_scan,
+    run_bandit_scan, run_radon_complexity,
+    run_hadolint_scan
+)
 
 app = FastAPI(title="Multi-Language Code Auditor")
 
@@ -31,38 +35,66 @@ async def health():
 
 from typing import List
 
+# Расширения, которые мы поддерживаем
+SUPPORTED_EXTENSIONS = {".py", ".js", ".yaml", ".yml", ".tf"}
+
+# Имена файлов, которые мы поддерживаем напрямую (без расширения)
+SUPPORTED_FILENAMES = {"dockerfile"}
+
+
+def get_scanners_for_file(filename: str):
+    """Возвращает список (scanner_func, category) для данного файла."""
+    lower = filename.lower()
+    basename = os.path.basename(lower)
+    ext = os.path.splitext(lower)[1]
+
+    scanners = []
+
+    if ext == ".py":
+        scanners.append(("style", run_ruff_scan))
+        scanners.append(("security", run_bandit_scan))
+    elif ext == ".js":
+        scanners.append(("style", run_eslint_scan))
+    elif ext in (".yaml", ".yml"):
+        scanners.append(("style", run_yaml_scan))
+    elif basename == "dockerfile" or basename.startswith("dockerfile."):
+        scanners.append(("docker", run_hadolint_scan))
+
+    return scanners
+
+
+def is_supported_file(filename: str) -> bool:
+    lower = filename.lower()
+    basename = os.path.basename(lower)
+    ext = os.path.splitext(lower)[1]
+    return ext in SUPPORTED_EXTENSIONS or basename == "dockerfile" or basename.startswith("dockerfile.")
+
+
 @app.post("/api/scan")
 async def scan_files(files: List[UploadFile] = File(...)):
     all_issues = []
     files_processed = 0
     errors = []
-    files_code = {} # Кэш кода для фронтенда
-    
+    files_code = {}
+    all_complexity = []
+
     for file in files:
         filename = file.filename
-        scanner_func = None
-        
-        if filename.lower().endswith(".py"):
-            scanner_func = run_ruff_scan
-        elif filename.lower().endswith(".js"):
-            scanner_func = run_eslint_scan
-        elif filename.lower().endswith((".yaml", ".yml")):
-            scanner_func = run_yaml_scan
-            
-        if not scanner_func:
-            continue 
+        scanners = get_scanners_for_file(filename)
+
+        if not scanners:
+            continue
 
         files_processed += 1
-        
+
         MAX_SIZE = 10 * 1024 * 1024
         content = await file.read()
         if len(content) > MAX_SIZE:
             errors.append(f"Файл {filename} слишком большой")
             continue
-        
+
         await file.seek(0)
-        
-        # Сохраняем код для отображения
+
         try:
             files_code[filename] = content.decode("utf-8")
         except:
@@ -70,29 +102,25 @@ async def scan_files(files: List[UploadFile] = File(...)):
 
         timestamp = f"{int(time.time())}_{filename}"
         temp_file_path = os.path.join(UPLOAD_DIR, timestamp)
-        
+
         try:
             with open(temp_file_path, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
-            
-            result = scanner_func(temp_file_path, original_filename=filename)
-            
-            if result["status"] == "success":
-                all_issues.extend(result["issues"])
-            else:
-                # Если сканер вернул ошибку (например, синтаксическую)
-                errors.append(f"Ошибка в {filename}: {result.get('message', 'Неизвестная ошибка')}")
-                # Добавляем системную ошибку в список проблем, чтобы пользователь ее видел
-                all_issues.append({
-                    "file": filename,
-                    "line": 0,
-                    "column": 0,
-                    "rule": "SCAN_ERROR",
-                    "severity": "critical",
-                    "message": result.get('message', 'Ошибка при анализе файла'),
-                    "line_text": ""
-                })
-            
+
+            # Запускаем все сканеры для файла
+            for category, scanner_func in scanners:
+                result = scanner_func(temp_file_path, original_filename=filename)
+                if result["status"] == "success":
+                    all_issues.extend(result.get("issues", []))
+                else:
+                    errors.append(f"Ошибка в {filename} ({category}): {result.get('message', 'Неизвестная ошибка')}")
+
+            # Цикломатическая сложность для Python
+            if filename.lower().endswith(".py"):
+                cx_result = run_radon_complexity(temp_file_path, original_filename=filename)
+                if cx_result["status"] == "success":
+                    all_complexity.extend(cx_result.get("complexity", []))
+
         finally:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path)
@@ -102,7 +130,8 @@ async def scan_files(files: List[UploadFile] = File(...)):
         "issues": all_issues,
         "files_scanned": files_processed,
         "scan_errors": errors,
-        "files_code": files_code
+        "files_code": files_code,
+        "complexity": all_complexity
     }
 
 
@@ -121,12 +150,10 @@ async def scan_git_repo(request: GitScanRequest):
     files_processed = 0
     errors = []
     files_code = {}
+    all_complexity = []
 
-    # Создаем временную директорию для клонирования
     with tempfile.TemporaryDirectory(dir=UPLOAD_DIR) as tmp_dir:
         try:
-            # Клонируем репозиторий (только последний коммит для скорости)
-            # Устанавливаем GIT_TERMINAL_PROMPT=0, чтобы git не запрашивал пароль для приватных репо
             process = subprocess.run(
                 ["git", "clone", "--depth", "1", repo_url, tmp_dir],
                 capture_output=True,
@@ -138,43 +165,45 @@ async def scan_git_repo(request: GitScanRequest):
             if process.returncode != 0:
                 error_msg = process.stderr
                 if "terminal prompts disabled" in error_msg or "Authentication failed" in error_msg:
-                    raise HTTPException(status_code=403, detail="Репозиторий приватный или требует авторизации. Поддерживаются только публичные репозитории.")
+                    raise HTTPException(status_code=403, detail="Репозиторий приватный или требует авторизации.")
                 raise HTTPException(status_code=400, detail=f"Ошибка при клонировании: {error_msg}")
 
-            # Обходим репозиторий рекурсивно
             path_obj = pathlib.Path(tmp_dir)
             for file_path in path_obj.rglob("*"):
                 if file_path.is_file():
-                    ext = file_path.suffix.lower()
-                    scanner_func = None
-                    
-                    if ext == ".py":
-                        scanner_func = run_ruff_scan
-                    elif ext == ".js":
-                        scanner_func = run_eslint_scan
-                    elif ext in [".yaml", ".yml"]:
-                        scanner_func = run_yaml_scan
-                    
-                    if scanner_func:
-                        files_processed += 1
-                        # Относительный путь для красоты в отчете
-                        rel_path = str(file_path.relative_to(tmp_dir))
-                        
-                        # Сохраняем код
-                        try:
-                            files_code[rel_path] = file_path.read_text(encoding="utf-8")
-                        except:
-                            files_code[rel_path] = "[Ошибка чтения]"
-                        
+                    rel_path = str(file_path.relative_to(tmp_dir))
+
+                    if not is_supported_file(rel_path):
+                        continue
+
+                    scanners = get_scanners_for_file(rel_path)
+                    if not scanners:
+                        continue
+
+                    files_processed += 1
+
+                    try:
+                        files_code[rel_path] = file_path.read_text(encoding="utf-8")
+                    except:
+                        files_code[rel_path] = "[Ошибка чтения]"
+
+                    for category, scanner_func in scanners:
                         result = scanner_func(str(file_path), original_filename=rel_path)
-                        
                         if result["status"] == "success":
-                            all_issues.extend(result["issues"])
+                            all_issues.extend(result.get("issues", []))
                         else:
-                            errors.append(f"Ошибка в {rel_path}: {result.get('message')}")
+                            errors.append(f"Ошибка в {rel_path} ({category}): {result.get('message')}")
+
+                    # Complexity для Python
+                    if rel_path.lower().endswith(".py"):
+                        cx_result = run_radon_complexity(str(file_path), original_filename=rel_path)
+                        if cx_result["status"] == "success":
+                            all_complexity.extend(cx_result.get("complexity", []))
 
         except subprocess.TimeoutExpired:
             raise HTTPException(status_code=408, detail="Превышено время ожидания клонирования")
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Системная ошибка: {str(e)}")
 
@@ -183,5 +212,6 @@ async def scan_git_repo(request: GitScanRequest):
         "issues": all_issues,
         "files_scanned": files_processed,
         "scan_errors": errors,
-        "files_code": files_code
+        "files_code": files_code,
+        "complexity": all_complexity
     }
