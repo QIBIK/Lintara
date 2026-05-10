@@ -1,9 +1,0 @@
-server:
-  port: 8080
-  debug: true
- # Ошибка: неправильный отступ
- settings:
-  timeout: 30
-  retries: 3
-    # Еще одна ошибка: лишние пробелы
-    invalid:  space

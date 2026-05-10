@@ -7,12 +7,13 @@ import shutil
 from scanner import (
     run_ruff_scan, run_eslint_scan, run_yaml_scan,
     run_bandit_scan, run_radon_complexity,
-    run_hadolint_scan
+    run_hadolint_scan, run_cppcheck_scan,
+    run_staticcheck_scan, run_htmlhint_scan,
+    run_stylelint_scan
 )
 
 app = FastAPI(title="Multi-Language Code Auditor")
 
-# Директории для статики и загрузок
 UPLOAD_DIR = "uploads"
 STATIC_DIR = "static"
 
@@ -25,29 +26,22 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 @app.get("/")
 async def root():
     index_path = os.path.join(STATIC_DIR, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
+    if os.path.exists(index_path): return FileResponse(index_path)
     return {"message": "Code Auditor MVP. Static files missing."}
 
-@app.get("/api/health")
-async def health():
-    return {"status": "ok"}
-
-from typing import List
-
 # Расширения, которые мы поддерживаем
-SUPPORTED_EXTENSIONS = {".py", ".js", ".yaml", ".yml", ".tf"}
-
-# Имена файлов, которые мы поддерживаем напрямую (без расширения)
-SUPPORTED_FILENAMES = {"dockerfile"}
-
+SUPPORTED_EXTENSIONS = {
+    ".py", ".js", ".yaml", ".yml", 
+    ".c", ".cpp", ".cc", ".h", ".hpp", # C/C++
+    ".go",                             # Go
+    ".html", ".htm",                   # HTML
+    ".css"                             # CSS
+}
 
 def get_scanners_for_file(filename: str):
-    """Возвращает список (scanner_func, category) для данного файла."""
     lower = filename.lower()
     basename = os.path.basename(lower)
     ext = os.path.splitext(lower)[1]
-
     scanners = []
 
     if ext == ".py":
@@ -57,11 +51,18 @@ def get_scanners_for_file(filename: str):
         scanners.append(("style", run_eslint_scan))
     elif ext in (".yaml", ".yml"):
         scanners.append(("style", run_yaml_scan))
+    elif ext in (".c", ".cpp", ".cc", ".h", ".hpp"):
+        scanners.append(("style", run_cppcheck_scan))
+    elif ext == ".go":
+        scanners.append(("style", run_staticcheck_scan))
+    elif ext in (".html", ".htm"):
+        scanners.append(("style", run_htmlhint_scan))
+    elif ext == ".css":
+        scanners.append(("style", run_stylelint_scan))
     elif basename == "dockerfile" or basename.startswith("dockerfile."):
         scanners.append(("docker", run_hadolint_scan))
 
     return scanners
-
 
 def is_supported_file(filename: str) -> bool:
     lower = filename.lower()
@@ -69,149 +70,75 @@ def is_supported_file(filename: str) -> bool:
     ext = os.path.splitext(lower)[1]
     return ext in SUPPORTED_EXTENSIONS or basename == "dockerfile" or basename.startswith("dockerfile.")
 
-
 @app.post("/api/scan")
-async def scan_files(files: List[UploadFile] = File(...)):
-    all_issues = []
+async def scan_files(files: list[UploadFile] = File(...)):
+    all_issues, errors, files_code, all_complexity = [], [], {}, []
     files_processed = 0
-    errors = []
-    files_code = {}
-    all_complexity = []
 
     for file in files:
         filename = file.filename
         scanners = get_scanners_for_file(filename)
-
-        if not scanners:
-            continue
+        if not scanners: continue
 
         files_processed += 1
-
-        MAX_SIZE = 10 * 1024 * 1024
         content = await file.read()
-        if len(content) > MAX_SIZE:
-            errors.append(f"Файл {filename} слишком большой")
-            continue
-
         await file.seek(0)
-
-        try:
-            files_code[filename] = content.decode("utf-8")
-        except:
-            files_code[filename] = "[Не удалось прочитать содержимое файла]"
+        
+        try: files_code[filename] = content.decode("utf-8")
+        except: files_code[filename] = "[Binary or Unknown Encoding]"
 
         timestamp = f"{int(time.time())}_{filename}"
-        temp_file_path = os.path.join(UPLOAD_DIR, timestamp)
+        temp_path = os.path.join(UPLOAD_DIR, timestamp)
 
         try:
-            with open(temp_file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-
-            # Запускаем все сканеры для файла
+            with open(temp_path, "wb") as buffer: shutil.copyfileobj(file.file, buffer)
             for category, scanner_func in scanners:
-                result = scanner_func(temp_file_path, original_filename=filename)
-                if result["status"] == "success":
-                    all_issues.extend(result.get("issues", []))
-                else:
-                    errors.append(f"Ошибка в {filename} ({category}): {result.get('message', 'Неизвестная ошибка')}")
-
-            # Цикломатическая сложность для Python
+                result = scanner_func(temp_path, original_filename=filename)
+                if result["status"] == "success": all_issues.extend(result.get("issues", []))
+                else: errors.append(f"Error in {filename}: {result.get('message')}")
+            
             if filename.lower().endswith(".py"):
-                cx_result = run_radon_complexity(temp_file_path, original_filename=filename)
-                if cx_result["status"] == "success":
-                    all_complexity.extend(cx_result.get("complexity", []))
-
+                cx = run_radon_complexity(temp_path, original_filename=filename)
+                if cx["status"] == "success": all_complexity.extend(cx.get("complexity", []))
         finally:
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)
+            if os.path.exists(temp_path): os.remove(temp_path)
 
     return {
-        "status": "success",
-        "issues": all_issues,
-        "files_scanned": files_processed,
-        "scan_errors": errors,
-        "files_code": files_code,
-        "complexity": all_complexity
+        "status": "success", "issues": all_issues, "files_scanned": files_processed,
+        "scan_errors": errors, "files_code": files_code, "complexity": all_complexity
     }
 
-
-from pydantic import BaseModel
-import subprocess
-import tempfile
-import pathlib
-
-class GitScanRequest(BaseModel):
-    url: str
-
 @app.post("/api/scan/git")
-async def scan_git_repo(request: GitScanRequest):
-    repo_url = request.url
-    all_issues = []
+async def scan_git_repo(request: dict):
+    repo_url = request.get("url")
+    all_issues, errors, files_code, all_complexity = [], [], {}, []
     files_processed = 0
-    errors = []
-    files_code = {}
-    all_complexity = []
 
+    import tempfile, pathlib, subprocess
     with tempfile.TemporaryDirectory(dir=UPLOAD_DIR) as tmp_dir:
         try:
-            process = subprocess.run(
-                ["git", "clone", "--depth", "1", repo_url, tmp_dir],
-                capture_output=True,
-                text=True,
-                timeout=60,
-                env={"GIT_TERMINAL_PROMPT": "0", "PATH": os.environ.get("PATH", "")}
-            )
-
-            if process.returncode != 0:
-                error_msg = process.stderr
-                if "terminal prompts disabled" in error_msg or "Authentication failed" in error_msg:
-                    raise HTTPException(status_code=403, detail="Репозиторий приватный или требует авторизации.")
-                raise HTTPException(status_code=400, detail=f"Ошибка при клонировании: {error_msg}")
-
+            subprocess.run(["git", "clone", "--depth", "1", repo_url, tmp_dir], capture_output=True, timeout=60)
             path_obj = pathlib.Path(tmp_dir)
-            for file_path in path_obj.rglob("*"):
-                if file_path.is_file():
-                    rel_path = str(file_path.relative_to(tmp_dir))
-
-                    if not is_supported_file(rel_path):
-                        continue
-
+            for f_path in path_obj.rglob("*"):
+                if f_path.is_file():
+                    rel_path = str(f_path.relative_to(tmp_dir))
+                    if not is_supported_file(rel_path): continue
+                    
                     scanners = get_scanners_for_file(rel_path)
-                    if not scanners:
-                        continue
-
                     files_processed += 1
-
-                    try:
-                        files_code[rel_path] = file_path.read_text(encoding="utf-8")
-                    except:
-                        files_code[rel_path] = "[Ошибка чтения]"
+                    try: files_code[rel_path] = f_path.read_text(encoding="utf-8")
+                    except: files_code[rel_path] = "[Error reading]"
 
                     for category, scanner_func in scanners:
-                        result = scanner_func(str(file_path), original_filename=rel_path)
-                        if result["status"] == "success":
-                            all_issues.extend(result.get("issues", []))
-                        else:
-                            errors.append(f"Ошибка в {rel_path} ({category}): {result.get('message')}")
-
-                    # Complexity для Python
+                        result = scanner_func(str(f_path), original_filename=rel_path)
+                        if result["status"] == "success": all_issues.extend(result.get("issues", []))
+                    
                     if rel_path.lower().endswith(".py"):
-                        cx_result = run_radon_complexity(str(file_path), original_filename=rel_path)
-                        if cx_result["status"] == "success":
-                            all_complexity.extend(cx_result.get("complexity", []))
-
-        except subprocess.TimeoutExpired:
-            raise HTTPException(status_code=408, detail="Превышено время ожидания клонирования")
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Системная ошибка: {str(e)}")
+                        cx = run_radon_complexity(str(f_path), original_filename=rel_path)
+                        if cx["status"] == "success": all_complexity.extend(cx.get("complexity", []))
+        except Exception as e: raise HTTPException(status_code=500, detail=str(e))
 
     return {
-        "status": "success",
-        "issues": all_issues,
-        "files_scanned": files_processed,
-        "scan_errors": errors,
-        "files_code": files_code,
-        "complexity": all_complexity
+        "status": "success", "issues": all_issues, "files_scanned": files_processed,
+        "scan_errors": errors, "files_code": files_code, "complexity": all_complexity
     }

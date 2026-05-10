@@ -3,139 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Antigravity Code Auditor</title>
-    <meta name="description" content="Professional multi-language code auditor with security scanning, complexity analysis, and Dockerfile linting.">
+    <title>Auditor Pro</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23007aff'/><path d='M30 50 L45 65 L70 35' stroke='white' stroke-width='8' fill='none'/></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
-    <!-- Monaco Editor -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Code Auditor</h1>
-            <p>Загрузите ваши файлы для мгновенного анализа качества и безопасности кода</p>
-            <div class="supported-langs">
+    <div class="app-container">
+        <header class="main-header">
+            <div class="logo">Auditor<span>Pro</span></div>
+            <nav class="supported-langs">
                 <span class="lang-tag python">Python</span>
                 <span class="lang-tag js">JavaScript</span>
-                <span class="lang-tag yaml">YAML</span>
-                <span class="lang-tag docker">Dockerfile</span>
-                <span class="lang-tag terraform">Terraform</span>
-            </div>
+                <span class="lang-tag cpp">C++</span>
+                <span class="lang-tag go">Go</span>
+                <span class="lang-tag html">Web</span>
+            </nav>
         </header>
 
         <main>
-            <section class="upload-section">
+            <section class="hero-section">
+                <h1>Безупречный код.</h1>
+                <p>Анализ безопасности и сложности в одно мгновение.</p>
+            </section>
+
+            <section class="action-card">
                 <div class="tabs">
-                    <button class="tab-btn active" data-tab="file">Файлы</button>
-                    <button class="tab-btn" data-tab="git">GitHub / GitLab</button>
+                    <button class="tab-btn active" data-tab="git">GitHub / GitLab</button>
+                    <button class="tab-btn" data-tab="file">Локальные файлы</button>
                 </div>
 
-                <div id="fileTab" class="tab-content">
-                    <form id="uploadForm">
-                        <div class="file-input-wrapper">
-                            <input type="file" id="fileInput" multiple required>
-                            <label for="fileInput">Выберите файлы проекта (py, js, yaml, docker...)</label>
+                <div id="gitTab" class="tab-content">
+                    <form id="gitForm" class="apple-form">
+                        <div class="input-group">
+                            <svg class="git-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                            <input type="url" id="gitUrl" placeholder="https://github.com/username/repository" required>
+                            <button type="submit" id="gitSubmitBtn">Проверить</button>
                         </div>
-                        <button type="submit" id="submitBtn">Анализировать файлы</button>
                     </form>
                 </div>
 
-                <div id="gitTab" class="tab-content hidden">
-                    <form id="gitForm">
-                        <div class="file-input-wrapper">
-                            <input type="url" id="gitUrl" placeholder="https://github.com/user/repo" required>
+                <div id="fileTab" class="tab-content hidden">
+                    <form id="uploadForm" class="file-upload-row">
+                        <div class="drop-zone" id="dropZone">
+                            <input type="file" id="fileInput" multiple hidden>
+                            <div class="drop-zone-content">
+                                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                                </svg>
+                                <p>Перетащите файлы сюда или <span>выберите</span></p>
+                            </div>
                         </div>
-                        <button type="submit" id="gitSubmitBtn">Клонировать и проверить</button>
+                        <button type="submit" id="submitBtn" class="side-submit-btn">Анализировать</button>
                     </form>
                 </div>
 
-                <div id="statusMessage" class="status-box hidden">
-                    <span class="spinner"></span>
-                    <span class="text">Обработка кода...</span>
+                <div id="statusMessage" class="status-overlay hidden">
+                    <div class="loader"></div>
+                    <p>Анализируем...</p>
                 </div>
             </section>
 
             <section id="resultsSection" class="results-section hidden">
-                <h2>Результаты аудита</h2>
+                <div class="summary-grid">
+                    <div class="health-card">
+                        <div class="score-container">
+                            <svg viewBox="0 0 100 100" class="score-ring">
+                                <circle class="ring-bg" cx="50" cy="50" r="45"></circle>
+                                <circle class="ring-fill" cx="50" cy="50" r="45" id="healthScoreFill"></circle>
+                            </svg>
+                            <div class="score-value">
+                                <span id="healthScoreText">100</span><small>%</small>
+                            </div>
+                        </div>
+                        <div class="health-label">Индекс здоровья</div>
+                    </div>
 
-                <!-- Dashboard -->
-                <div id="statsDashboard" class="stats-grid">
-                    <div class="stat-card files">
-                        <span class="label">Файлов проверено</span>
-                        <span id="statFiles" class="value">0</span>
+                    <div class="mini-card critical">
+                        <div class="card-inner">
+                            <span class="val" id="statCritical">0</span>
+                            <span class="lbl">Критических</span>
+                        </div>
                     </div>
-                    <div class="stat-card critical">
-                        <span class="label">Критических ошибок</span>
-                        <span id="statCritical" class="value">0</span>
+                    <div class="mini-card warning">
+                        <div class="card-inner">
+                            <span class="val" id="statWarning">0</span>
+                            <span class="lbl">Замечаний</span>
+                        </div>
                     </div>
-                    <div class="stat-card warning">
-                        <span class="label">Предупреждений</span>
-                        <span id="statWarning" class="value">0</span>
-                    </div>
-                    <div class="stat-card security">
-                        <span class="label">Уязвимостей</span>
-                        <span id="statSecurity" class="value">0</span>
-                    </div>
-                    <div class="stat-card complexity-card">
-                        <span class="label">Сложных функций</span>
-                        <span id="statComplexity" class="value">0</span>
+                    <div class="mini-card security">
+                        <div class="card-inner">
+                            <span class="val" id="statSecurity">0</span>
+                            <span class="lbl">Уязвимостей</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Filters -->
-                <div class="filter-bar">
-                    <span style="color: var(--text-muted); font-size: 0.9rem;">Фильтр:</span>
-                    <button class="filter-btn active" data-severity="all">Все</button>
-                    <button class="filter-btn" data-severity="critical">Критические</button>
-                    <button class="filter-btn" data-severity="warning">Предупреждения</button>
-                    <button class="filter-btn filter-btn-security" data-severity="security">🛡️ Безопасность</button>
-                </div>
+                <div class="analysis-layout">
+                    <aside class="complexity-sidebar hidden" id="complexityPanel">
+                        <h3>Сложность функций</h3>
+                        <div id="complexityList" class="compact-complexity"></div>
+                    </aside>
 
-                <!-- Complexity Panel -->
-                <div id="complexityPanel" class="complexity-panel hidden">
-                    <h3>📊 Цикломатическая сложность</h3>
-                    <p class="complexity-hint">Функции с рангом C и выше — кандидаты на рефакторинг</p>
-                    <div id="complexityList" class="complexity-list"></div>
-                </div>
-
-                <div class="table-container">
-                    <table id="resultsTable">
-                        <thead>
-                            <tr>
-                                <th>Категория</th>
-                                <th>Файл</th>
-                                <th>Строка</th>
-                                <th>Правило</th>
-                                <th>Уровень</th>
-                                <th>Сообщение</th>
-                            </tr>
-                        </thead>
-                        <tbody id="resultsBody">
-                        </tbody>
-                    </table>
-                </div>
-                <div id="emptyMessage" class="empty-state">
-                    Пока нет данных для отображения. Загрузите файл.
+                    <div class="issues-main">
+                        <div class="filter-pills">
+                            <button class="pill active" data-severity="all">Все</button>
+                            <button class="pill" data-severity="critical">Критические</button>
+                            <button class="pill" data-severity="warning">Стиль</button>
+                            <button class="pill" data-severity="security">Безопасность</button>
+                        </div>
+                        <div id="issuesList" class="issues-stack"></div>
+                    </div>
                 </div>
             </section>
         </main>
+    </div>
 
-        <footer>
-            <p>&copy; 2026 Code Auditor Pro. Built for high-performance development teams.</p>
-        </footer>
-
-        <!-- Modal for Code Viewer -->
-        <div id="codeModal" class="modal hidden">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 id="modalTitle">Просмотр кода</h3>
-                    <button id="closeModal">&times;</button>
+    <!-- Monaco Modal -->
+    <div id="codeModal" class="modal hidden">
+        <div class="modal-window">
+            <div class="modal-header">
+                <div class="modal-title-wrapper">
+                    <span id="modalTitle">Source Code</span>
                 </div>
-                <div id="monaco-container"></div>
+                <button id="closeModal" class="modal-close-btn">Закрыть</button>
             </div>
+            <div id="monaco-container"></div>
         </div>
     </div>
     <script src="/static/script.js"></script>
