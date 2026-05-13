@@ -1,72 +1,71 @@
-# Auditor Pro
 
-**Auditor Pro** is a modern, fast, and feature-rich code analysis tool built with FastAPI and a beautiful vanilla HTML/CSS/JS frontend. It provides deep insights into code security, complexity, and linting.
+# 🛡️ Auditor Pro
 
-## ✨ Features
+**Auditor Pro** — современный, быстрый и многофункциональный инструмент для анализа кода, построенный на **FastAPI и HTML/CSS/JS frontend**. Обеспечивает глубокий анализ безопасности, сложности и линтинга прямо в браузере.
 
-- **GitHub Repository Scanning**: Easily analyze public GitHub repositories by pasting their URLs.
-- **Local File Uploads**: Drag & drop support for local file and directory analysis.
-- **Advanced Scanning Engines**:
-  - **Semgrep Integration**: Deep semantic code analysis for catching complex security vulnerabilities.
-  - **YAML Linting**: Built-in support for analyzing `.yaml` and `.yml` files using `yamllint`.
-- **Interactive Code Viewer**: Integrated Monaco Editor (the editor behind VS Code) for navigating code files and pinpointing issues directly within the browser.
-- **Rich Analysis Dashboard**: Beautiful, real-time statistics showing:
-  - Security scores
-  - Critical and Warning issues count
-  - Cyclomatic complexity analysis
-- **Premium UI/UX**: Apple-inspired design with sleek glassmorphism, dynamic animations, and custom interactive elements (like the animated BB8 toggle switch).
-- **Containerized**: Fully Dockerized for easy deployment and setup.
+---
 
-## 🚀 Getting Started
+## 🌟 Особенности
+| Функция | Описание |
+|---|---|
+| 🔍 **GitHub Repository Scanning** | Анализируйте публичные репозитории, просто вставив их URL |
+| 📁 **Local File Uploads** | Поддержка **drag & drop** для локальных файлов и директорий |
+| ⚙️ **Advanced Scanning Engines** | |
+| &nbsp;&nbsp;🔒 **Semgrep Integration** | Глубокий семантический анализ для выявления сложных уязвимостей |
+| &nbsp;&nbsp;📝 **YAML Linting** | Встроенная проверка `.yaml`/`.yml` через `yamllint` |
+| 💻 **Interactive Code Viewer** | Встроенный `Monaco Editor` (тот же, что в VS Code) для навигации и подсветки проблем в браузере |
+| 📊 **Rich Analysis Dashboard** | Статистика в реальном времени: `Security scores`, количество `Critical/Warning`, анализ цикломатической сложности |
+| 🐳 **Containerized** | Полная поддержка **Docker** для быстрого деплоя и настройки |
 
-### Prerequisites
+---
+
+## 📸 Демонстрация
+![alt text](static/image.png)
+
+---
+
+## 🚀 Быстрый старт
+
+### 📦 Предварительные требования
 - [Docker](https://www.docker.com/)
 - [Docker Compose](https://docs.docker.com/compose/)
 
-### Installation & Execution
+### ⚡ Установка и запуск
+```bash
+# 1. Клонируйте репозиторий
+git clone <your-repo-url>
+cd project-02
 
-1. Clone the repository:
-   ```bash
-   git clone <your-repo-url>
-   cd project-02
-   ```
+# 2. Соберите и запустите контейнеры
+docker-compose up --build -d
 
-2. Build and run the application using Docker Compose:
-   ```bash
-   docker-compose up --build -d
-   ```
-
-3. Open your browser and navigate to:
-   ```
-   http://localhost:8000
-   ```
-
-## 🛠 Tech Stack
-
-- **Backend**: Python, FastAPI, Uvicorn
-- **Frontend**: HTML5, Vanilla CSS3 (Custom Design System), JavaScript
-- **Code Editor**: Monaco Editor
-- **Analysis Tools**: Semgrep, yamllint
-- **Infrastructure**: Docker, Docker Compose
-
-## 📁 Project Structure
-
+# 3. Откройте в браузере
+open http://localhost:8000
 ```
-.
-├── docker-compose.yml     # Docker composition configuration
-├── Dockerfile             # Container definition for the app
-├── requirements.txt       # Python dependencies
-├── scanner.py             # Main FastAPI backend application
-└── static/                # Frontend assets
-    ├── index.html         # Main interface
-    ├── style.css          # Premium styling and animations
-    └── script.js          # Client-side logic and API communication
+📍 Приложение будет доступно по адресу: `http://localhost:8000`
+
+---
+
+## 🛠️ Стек технологий
+
+| Категория          | Технологии                     |
+| ------------------ | ------------------------------ |
+| **Backend**        | `Python`, `FastAPI`, `Uvicorn` | 
+| **Frontend**       | `HTML5`, `CSS`, `JavaScript`   |
+| **Code Editor**    | `Monaco Editor`                |
+| **Analysis Tools** | `Semgrep`, `yamllint`          |
+| **Infrastructure** | `Docker`, `Docker Compose`     |
+
+---
+
+## 📁 Структура проекта
+```text
+├── docker-compose.yml     # Конфигурация Docker Compose
+├── Dockerfile             # Определение контейнера для приложения
+├── requirements.txt       # Python зависимости
+├── scanner.py             # Основное FastAPI backend приложение
+└── static/                # Frontend ресурсы
+    ├── index.html         # Основной интерфейс
+    ├── style.css          # Стили и анимации
+    └── script.js          # Клиентская логика и API communication
 ```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is licensed under the MIT License.
