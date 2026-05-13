@@ -1,0 +1,60 @@
+rules:
+  # Python Rules
+  - id: python.lang.security.audit.dangerous-system-call-os-system.dangerous-system-call-os-system
+    message: "Found dangerous system call `os.system`. This could lead to a command injection vulnerability."
+    languages: [python]
+    severity: ERROR
+    patterns:
+      - pattern: os.system(...)
+
+  - id: python.lang.security.audit.flask.insecure-flask-app-run.insecure-flask-app-run
+    message: "Found insecure Flask app run. The application is running on all interfaces (0.0.0.0) which is dangerous in production."
+    languages: [python]
+    severity: WARNING
+    patterns:
+      - pattern: $APP.run(..., host="0.0.0.0", ...)
+
+  # JavaScript Rules
+  - id: javascript.lang.security.audit.eval-usage.eval-usage
+    message: "The use of `eval` is extremely dangerous as it allows for arbitrary code execution."
+    languages: [javascript]
+    severity: ERROR
+    patterns:
+      - pattern: eval(...)
+
+  - id: javascript.lang.security.audit.innerhtml-usage.innerhtml-usage
+    message: "Setting `innerHTML` can lead to Cross-Site Scripting (XSS) if user input is not properly sanitized."
+    languages: [javascript]
+    severity: WARNING
+    patterns:
+      - pattern: $EL.innerHTML = ...
+
+  # Go Rules
+  - id: go.lang.security.audit.crypto.use-of-weak-crypto.use-of-weak-crypto
+    message: "The use of weak cryptographic algorithms (like MD5 or SHA1) is discouraged."
+    languages: [go]
+    severity: WARNING
+    patterns:
+      - pattern-either:
+          - pattern: md5.New()
+          - pattern: sha1.New()
+
+  # C/C++ Rules
+  - id: c.lang.security.audit.dangerous-use-of-strcpy.dangerous-use-of-strcpy
+    message: "The use of `strcpy` is dangerous because it doesn't check the buffer size. Use `strncpy` instead."
+    languages: [c, cpp]
+    severity: ERROR
+    patterns:
+      - pattern: strcpy(...)
+
+  # Generic Rules
+  - id: generic.secrets.hardcoded-password.hardcoded-password
+    message: "Hardcoded password or secret detected."
+    languages: [python, javascript, go, java, c, cpp]
+    severity: ERROR
+    patterns:
+      - pattern-either:
+          - pattern: $VAR = "password123"
+          - pattern: $VAR = "admin"
+          - pattern: $SECRET = "AIza..." # Google API Key
+          - pattern: $SECRET = "AKIA..." # AWS Key
