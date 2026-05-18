@@ -33,8 +33,8 @@
 ### ⚡ Установка и запуск
 ```bash
 # 1. Клонируйте репозиторий
-git clone <your-repo-url>
-cd project-02
+git clone https://github.com/QIBIK/Lintara
+cd Lintara
 
 # 2. Соберите и запустите контейнеры
 docker-compose up --build -d
