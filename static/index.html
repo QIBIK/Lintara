@@ -1,21 +1,25 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auditor Pro</title>
+    <title>Lintara</title>
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23007aff'/><path d='M30 50 L45 65 L70 35' stroke='white' stroke-width='8' fill='none'/></svg>">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23007aff'/><path d='M30 50 L45 65 L70 35' stroke='white' stroke-width='8' fill='none'/></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 </head>
+
 <body>
     <div class="app-container">
         <header class="main-header">
-            <div class="logo">Auditor<span>Pro</span></div>
+            <div class="logo">Lintara</div>
             <nav class="supported-langs">
                 <span class="lang-tag python">Python</span>
                 <span class="lang-tag js">JavaScript</span>
@@ -41,7 +45,12 @@
                 <div id="gitTab" class="tab-content">
                     <form id="gitForm" class="apple-form">
                         <div class="input-group">
-                            <svg class="git-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+                            <svg class="git-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path
+                                    d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22">
+                                </path>
+                            </svg>
                             <input type="url" id="gitUrl" placeholder="https://github.com/username/repository" required>
                             <button type="submit" id="gitSubmitBtn">Проверить</button>
                         </div>
@@ -53,8 +62,9 @@
                         <div class="drop-zone" id="dropZone">
                             <input type="file" id="fileInput" multiple hidden>
                             <div class="drop-zone-content">
-                                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+                                <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
                                 </svg>
                                 <p>Перетащите файлы сюда или <span>выберите</span></p>
                             </div>
@@ -104,19 +114,19 @@
                     </div>
                 </div>
 
-                    <div class="issues-main full-width">
-                        <div class="filter-pills">
-                            <button class="pill active" data-severity="all">Все</button>
-                            <button class="pill" data-severity="critical">Критические</button>
-                            <button class="pill" data-severity="warning">Стиль</button>
-                            <button class="pill" data-severity="security">Безопасность</button>
-                            <button class="pill" data-severity="complexity">Сложность</button>
-                        </div>
-                        <div id="issuesList" class="issues-stack"></div>
+                <div class="issues-main full-width">
+                    <div class="filter-pills">
+                        <button class="pill active" data-severity="all">Все</button>
+                        <button class="pill" data-severity="critical">Критические</button>
+                        <button class="pill" data-severity="warning">Стиль</button>
+                        <button class="pill" data-severity="security">Безопасность</button>
+                        <button class="pill" data-severity="complexity">Сложность</button>
                     </div>
+                    <div id="issuesList" class="issues-stack"></div>
                 </div>
-            </section>
-        </main>
+    </div>
+    </section>
+    </main>
     </div>
 
     <!-- Monaco Modal -->
@@ -133,4 +143,5 @@
     </div>
     <script src="/static/script.js"></script>
 </body>
+
 </html>

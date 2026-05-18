@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropZone = document.getElementById('dropZone');
 
     dropZone.addEventListener('click', () => fileInput.click());
-    
+
     ['dragover', 'dragenter'].forEach(evt => {
         dropZone.addEventListener(evt, (e) => {
             e.preventDefault();
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // По умолчанию показываем все проблемы
         renderIssues(allIssues);
-        
+
         // Сбрасываем активную пилюлю на "Все"
         document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
         document.querySelector('.pill[data-severity="all"]').classList.add('active');
@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const elapsed = time - start;
             const progress = Math.min(elapsed / duration, 1);
             const eased = progress * (2 - progress);
-            
+
             const cur = Math.floor(eased * score);
             text.textContent = cur;
             fill.style.strokeDashoffset = 283 - (283 * (eased * score) / 100);
@@ -219,10 +219,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('modalTitle').textContent = filename;
         const code = currentFilesCode[filename] || "// Код недоступен";
         const ext = filename.split('.').pop().toLowerCase();
-        const langMap = { 
-            'py': 'python', 'js': 'javascript', 'go': 'go', 
-            'cpp': 'cpp', 'c': 'cpp', 'css': 'css', 
-            'html': 'html', 'java': 'java', 'yaml': 'yaml', 'yml': 'yaml' 
+        const langMap = {
+            'py': 'python', 'js': 'javascript', 'go': 'go',
+            'cpp': 'cpp', 'c': 'cpp', 'css': 'css',
+            'html': 'html', 'java': 'java', 'yaml': 'yaml', 'yml': 'yaml'
         };
         const lang = langMap[ext] || 'plaintext';
 
@@ -244,10 +244,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function focusOnLine(line, isCritical) {
         if (!editor) return;
-        
+
         editor.layout(); // Принудительно обновляем размеры после открытия модалки
         editor.revealLineInCenter(line);
-        
+
         if (editor._decorationsCollection) {
             editor._decorationsCollection.set([{
                 range: new monaco.Range(line, 1, line, 1),
@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!e.target.classList.contains('pill')) return;
         document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
         e.target.classList.add('active');
-        
+
         const sev = e.target.dataset.severity;
         if (sev === 'complexity') {
             renderComplexityTab();
