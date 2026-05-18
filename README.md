@@ -20,7 +20,7 @@
 ---
 
 ## 📸 Демонстрация
-![alt text](static/image.png)
+![alt text](static/image1.png)
 
 ---
 
